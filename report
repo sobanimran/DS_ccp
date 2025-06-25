@@ -1,0 +1,294 @@
+Project Title: Traffic Management System with Zebra Crossing for Pedestrians
+Group Members:
+Souban Shahid (68482)
+Aqsa Ayub (69472)
+Bushra Solangi (69125)
+
+Objective: The goal of this project is to simulate a traffic management system where vehicles move according to traffic light signals, while incorporating a zebra crossing feature for pedestrian safety. The system includes vehicle management, handling of traffic lights, dynamic vehicle addition, and pedestrian crossing with a 5-second stop period for vehicles when pedestrians are crossing.
+Technologies Used:
+•	Python (version 3.x)
+•	Pygame library for graphical interface and simulation
+
+Project Overview:
+The Traffic Management System simulates a city intersection with two major roads: North-South and East-West. It manages vehicles that move based on traffic light signals and gives priority to ambulances. Additionally, the system integrates a zebra crossing feature that stops vehicles for pedestrians at specific intervals.
+Key Features:
+1.	Traffic Lights:
+a.	Traffic lights alternate between two phases:
+i.	North-South (NS): Traffic moving in the North-South direction has a green signal, while East-West traffic is stopped.
+ii.	East-West (WE): Traffic moving in the East-West direction gets a green signal, while North-South traffic is stopped.
+b.	The light phases change every 10 seconds, allowing for a smooth flow of traffic in both directions.
+2.	Vehicles:
+a.	Vehicles are of two types: Cars and Ambulances.
+i.	Cars are regular vehicles that move according to traffic light signals.
+ii.	Ambulances always move regardless of the traffic light state, ensuring they get priority during emergency situations.
+b.	Vehicles are added dynamically through keyboard inputs, allowing the user to simulate various traffic situations.
+3.	Pedestrian Crossing:
+a.	A zebra crossing is implemented at the intersection of both roads, marked with visible white lines.
+b.	A pedestrian crossing occurs when the North-South phase is active, and vehicles stop for a 5-second period to allow pedestrians to cross safely.
+c.	The pedestrian crossing is visible for a short period (5 seconds), during which vehicles stop, and pedestrians can safely walk across.
+4.	Countdown Timers:
+a.	The remaining time for each phase (North-South or East-West) is displayed near the traffic lights.
+b.	A countdown is also shown for pedestrian crossings, indicating the remaining time for the pedestrian stop.
+5.	Vehicle Movement:
+a.	Vehicles move in the four cardinal directions (North, South, East, West) depending on their assigned direction.
+b.	They move at different speeds: Ambulances move faster than regular cars.
+c.	Vehicles that exit the screen are removed from the queue.
+6.	Dynamic Vehicle Addition:
+a.	Vehicles can be added to the simulation by pressing the 'C' key for cars or the 'A' key for ambulances. The vehicles are randomly directed to one of the four roads (North, South, East, West).
+
+System Components:
+1.	TrafficLight Class:
+a.	Handles the traffic light system by toggling between red and green states.
+b.	Draws the traffic light on the screen.
+2.	Vehicle Class:
+a.	Represents both cars and ambulances.
+b.	Defines the movement, speed, and behavior of vehicles in the simulation.
+c.	Handles the drawing of vehicles on the screen.
+3.	Movement Logic:
+a.	Vehicles move across the screen based on their assigned direction and the traffic light's state.
+b.	If the pedestrian crossing is active, vehicles are stopped near the zebra crossing area for 5 seconds.
+4.	Pedestrian Crossing Logic:
+a.	When the North-South traffic light phase is active, pedestrians can cross the zebra crossing.
+b.	Vehicles stop for 5 seconds to allow safe pedestrian crossing, and then resume their normal movement.
+5.	Countdown Timer:
+a.	Display countdown timers for both the traffic light phases and pedestrian crossing.
+b.	The traffic light phases are timed in intervals, while the pedestrian crossing timer lasts for 5 seconds.
+
+Code Implementation:
+
+import pygame
+import random
+from collections import deque
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 700
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+GRAY = (200, 200, 200)
+
+# Screen setup
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Traffic Management System")
+clock = pygame.time.Clock()
+
+# Load vehicle images
+ambulance_image = pygame.image.load("ambulance.jpeg")
+ambulance_image = pygame.transform.scale(ambulance_image, (50, 25))
+car_image = pygame.image.load("car.jpeg")
+car_image = pygame.transform.scale(car_image, (40, 20))
+
+# Traffic Light class
+class TrafficLight:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.state = "RED"  # RED, GREEN
+
+    def draw(self):
+        color = RED if self.state == "RED" else GREEN
+        pygame.draw.circle(screen, color, (self.x, self.y), 20)
+
+
+•	pygame initializes the Pygame library for game-like simulation.
+•	TrafficLight class defines traffic light objects, with methods to toggle between green and red and display them on the screen.
+python
+CopyEdit
+# Vehicle class
+class Vehicle:
+    def __init__(self, vehicle_id, vehicle_type, x, y, direction):
+        self.id = vehicle_id
+        self.type = vehicle_type
+        self.x = x
+        self.y = y
+        self.direction = direction  # 'N', 'S', 'E', 'W'
+        self.image = ambulance_image if vehicle_type == "ambulance" else car_image
+        self.speed = 2 if vehicle_type == "ambulance" else 1
+
+    def move(self):
+        if self.direction == 'N':
+            self.y -= self.speed
+        elif self.direction == 'S':
+            self.y += self.speed
+        elif self.direction == 'E':
+            self.x += self.speed
+        elif self.direction == 'W':
+            self.x -= self.speed
+
+    def is_out_of_bounds(self):
+        return (
+            self.y < 0 or self.y > SCREEN_HEIGHT or
+            self.x < 0 or self.x > SCREEN_WIDTH
+        )
+
+    def draw(self):
+        if self.image:
+            screen.blit(self.image, (self.x, self.y))
+
+•	Vehicle class defines vehicles, with properties for vehicle type (ambulance or car), movement direction (North, South, East, West), speed, and drawing logic.
+•	The move method updates the vehicle’s position based on its direction and speed.
+
+# Initialize traffic lights
+north_south_lights = [
+    TrafficLight(500, 250),
+    TrafficLight(500, 450),
+]
+
+east_west_lights = [
+    TrafficLight(400, 350),
+    TrafficLight(600, 350),
+]
+
+# Vehicle queues
+vehicle_queues = {
+    'N': deque(),
+    'S': deque(),
+    'E': deque(),
+    'W': deque()
+}
+
+# Add vehicle to queue
+def add_vehicle(vehicle_type, direction):
+    vehicle_id = random.randint(1000, 9999)
+    if direction == 'N':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 550, 650, 'N')
+    elif direction == 'S':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 400, 50, 'S')
+    elif direction == 'E':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 50, 320, 'E')
+    elif direction == 'W':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 950, 370, 'W')
+
+    vehicle_queues[direction].append(vehicle)
+
+•	Traffic lights are initialized for both North-South and East-West directions.
+•	add_vehicle function adds a vehicle to one of the four cardinal directions (North, South, East, West) with random vehicle ID and type.
+
+# Draw roads
+def draw_roads():
+    screen.fill(GRAY)
+    pygame.draw.rect(screen, BLACK, (400, 0, 200, 700))  # Vertical road
+    pygame.draw.rect(screen, BLACK, (0, 300, 1000, 100))  # Horizontal road
+    for i in range(0, 700, 50):
+        pygame.draw.rect(screen, WHITE, (495, i, 10, 40))  # Divider vertical
+    for i in range(0, 1000, 50):
+        pygame.draw.rect(screen, WHITE, (i, 346, 40, 10))  # Divider horizontal
+
+    # Draw pedestrian crossings
+    pygame.draw.rect(screen, WHITE, (400, 280, 200, 20))  # Horizontal crossing
+
+•	draw_roads function fills the screen with a gray color and then draws the road lines, including dividers and pedestrian crossings.
+python
+CopyEdit
+# Move vehicles
+pedestrian_timer = 300  # 5 seconds in frames (since 60 FPS, 5 * 60 = 300 frames)
+pedestrian_active = False
+
+def move_vehicles():
+    global pedestrian_active
+    for direction, queue in vehicle_queues.items():
+        for vehicle in list(queue):
+            # Handle vehicle movement based on pedestrian signal
+            if pedestrian_active:
+                if direction in ['N', 'S']:  # North-South direction
+                    if vehicle.x > 400 and vehicle.x < 600 and (vehicle.y > 260 and vehicle.y < 320):  # Between the zebra crossing area
+                        continue  # Stop the vehicle if it's in the zebra crossing zone
+                elif direction in ['E', 'W']:  # East-West direction
+                    if vehicle.x > 480 and vehicle.x < 520 and (vehicle.y > 0 and vehicle.y < 300):  # Vertical crossing
+                        continue  # Stop the vehicle if it's in the zebra crossing zone
+
+            # Check traffic light state for the direction
+            if direction in ['N', 'S']:
+                light_state = any(light.state == "GREEN" for light in north_south_lights)
+            else:  # direction in ['E', 'W']
+                light_state = any(light.state == "GREEN" for light in east_west_lights)
+
+            if light_state or vehicle.type == "ambulance":
+                vehicle.move()
+
+            if vehicle.is_out_of_bounds():
+                queue.popleft()
+
+•	This section handles the movement of vehicles based on traffic light signals. If the pedestrian crossing is active, vehicles in the zebra crossing area are stopped.
+python
+CopyEdit
+# Font for displaying the countdown
+font = pygame.font.Font(None, 36)
+
+# Draw countdown near traffic lights
+def draw_countdown(x, y, time_left):
+    countdown_text = font.render(str(time_left), True, WHITE)
+    screen.blit(countdown_text, (x, y))
+
+•	The countdown timer is displayed near the traffic lights to show the remaining time for each phase.
+python
+CopyEdit
+# Main simulation loop
+def main():
+    global pedestrian_timer, pedestrian_active
+    running = True
+    phase_duration = 600  # Frames (10 seconds for each phase)
+    timer = phase_duration
+    current_phase = "NS"  # Initial phase: North-South
+    add_vehicle("ambulance", "N")
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_c:  # Add car
+                    add_vehicle("car", random.choice(['N', 'S', 'E', 'W']))
+                elif event.key == pygame.K_a:  # Add ambulance
+                    add_vehicle("ambulance", random.choice(['N', 'S', 'E', 'W']))
+
+        # Handle traffic light phases and pedestrian crossing
+        move_vehicles()
+        draw_roads()
+
+        # Draw the vehicles and traffic lights
+        for light in north_south_lights + east_west_lights:
+            light.draw()
+        for queue in vehicle_queues.values():
+            for vehicle in queue:
+                vehicle.draw()
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
+
+•	The main simulation loop handles user input for dynamically adding vehicles, updates the traffic light phases, manages pedestrian crossing, and updates the screen with vehicle movements.
+
+Challenges Faced:
+1.	Simultaneous Vehicle Management:
+a.	Handling the movement of multiple vehicles in different directions while respecting traffic light states and pedestrian crossing involved careful coordination of vehicle queues.
+2.	Pedestrian Crossing Timing:
+a.	Synchronizing the 5-second pedestrian crossing with the vehicle stop and ensuring that the vehicles resume their movement afterward required accurate timer management.
+3.	Real-Time Simulation:
+a.	Ensuring smooth real-time simulation while displaying both the traffic light system and the vehicle movement was challenging but manageable with Pygame’s event handling and frame rate control.
+
+Improvements & Future Work:
+1.	Advanced Traffic Management:
+a.	Future improvements could include more advanced traffic management algorithms such as dynamic traffic light phases based on vehicle count in each direction.
+2.	Multiple Pedestrian Crossings:
+a.	The system could be extended to handle multiple pedestrian crossings at various intersections across the simulation.
+3.	Realistic Vehicle Behavior:
+a.	More complex vehicle behaviors, such as slowing down before intersections or reacting to traffic congestion, could be implemented for a more realistic simulation.
+4.	User Interface:
+a.	A more interactive user interface could be added, allowing users to control the traffic system, add vehicles, and manually change the light phases.
+ 
+
+Conclusion:
+This project successfully simulates a traffic management system with an integrated pedestrian crossing. It demonstrates a fundamental understanding of traffic control systems, vehicle prioritization, and pedestrian safety, while providing a visually interactive simulation.
+
