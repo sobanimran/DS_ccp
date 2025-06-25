@@ -1,0 +1,212 @@
+import pygame
+import random
+from collections import deque
+
+# Initialize Pygame
+pygame.init()
+
+# Screen dimensions
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 700
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+GRAY = (200, 200, 200)
+
+# Screen setup
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+pygame.display.set_caption("Traffic Management System")
+clock = pygame.time.Clock()
+
+# Load vehicle images
+ambulance_image = pygame.image.load("ambulance.jpeg")
+ambulance_image = pygame.transform.scale(ambulance_image, (50, 25))
+car_image = pygame.image.load("car.jpeg")
+car_image = pygame.transform.scale(car_image, (40, 20))
+
+# Traffic Light class
+class TrafficLight:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.state = "RED"  # RED, GREEN
+
+    def draw(self):
+        color = RED if self.state == "RED" else GREEN
+        pygame.draw.circle(screen, color, (self.x, self.y), 20)
+
+
+•	pygame initializes the Pygame library for game-like simulation.
+•	TrafficLight class defines traffic light objects, with methods to toggle between green and red and display them on the screen.
+python
+CopyEdit
+# Vehicle class
+class Vehicle:
+    def __init__(self, vehicle_id, vehicle_type, x, y, direction):
+        self.id = vehicle_id
+        self.type = vehicle_type
+        self.x = x
+        self.y = y
+        self.direction = direction  # 'N', 'S', 'E', 'W'
+        self.image = ambulance_image if vehicle_type == "ambulance" else car_image
+        self.speed = 2 if vehicle_type == "ambulance" else 1
+
+    def move(self):
+        if self.direction == 'N':
+            self.y -= self.speed
+        elif self.direction == 'S':
+            self.y += self.speed
+        elif self.direction == 'E':
+            self.x += self.speed
+        elif self.direction == 'W':
+            self.x -= self.speed
+
+    def is_out_of_bounds(self):
+        return (
+            self.y < 0 or self.y > SCREEN_HEIGHT or
+            self.x < 0 or self.x > SCREEN_WIDTH
+        )
+
+    def draw(self):
+        if self.image:
+            screen.blit(self.image, (self.x, self.y))
+
+•	Vehicle class defines vehicles, with properties for vehicle type (ambulance or car), movement direction (North, South, East, West), speed, and drawing logic.
+•	The move method updates the vehicle’s position based on its direction and speed.
+
+# Initialize traffic lights
+north_south_lights = [
+    TrafficLight(500, 250),
+    TrafficLight(500, 450),
+]
+
+east_west_lights = [
+    TrafficLight(400, 350),
+    TrafficLight(600, 350),
+]
+
+# Vehicle queues
+vehicle_queues = {
+    'N': deque(),
+    'S': deque(),
+    'E': deque(),
+    'W': deque()
+}
+
+# Add vehicle to queue
+def add_vehicle(vehicle_type, direction):
+    vehicle_id = random.randint(1000, 9999)
+    if direction == 'N':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 550, 650, 'N')
+    elif direction == 'S':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 400, 50, 'S')
+    elif direction == 'E':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 50, 320, 'E')
+    elif direction == 'W':
+        vehicle = Vehicle(vehicle_id, vehicle_type, 950, 370, 'W')
+
+    vehicle_queues[direction].append(vehicle)
+
+•	Traffic lights are initialized for both North-South and East-West directions.
+•	add_vehicle function adds a vehicle to one of the four cardinal directions (North, South, East, West) with random vehicle ID and type.
+
+# Draw roads
+def draw_roads():
+    screen.fill(GRAY)
+    pygame.draw.rect(screen, BLACK, (400, 0, 200, 700))  # Vertical road
+    pygame.draw.rect(screen, BLACK, (0, 300, 1000, 100))  # Horizontal road
+    for i in range(0, 700, 50):
+        pygame.draw.rect(screen, WHITE, (495, i, 10, 40))  # Divider vertical
+    for i in range(0, 1000, 50):
+        pygame.draw.rect(screen, WHITE, (i, 346, 40, 10))  # Divider horizontal
+
+    # Draw pedestrian crossings
+    pygame.draw.rect(screen, WHITE, (400, 280, 200, 20))  # Horizontal crossing
+
+•	draw_roads function fills the screen with a gray color and then draws the road lines, including dividers and pedestrian crossings.
+python
+CopyEdit
+# Move vehicles
+pedestrian_timer = 300  # 5 seconds in frames (since 60 FPS, 5 * 60 = 300 frames)
+pedestrian_active = False
+
+def move_vehicles():
+    global pedestrian_active
+    for direction, queue in vehicle_queues.items():
+        for vehicle in list(queue):
+            # Handle vehicle movement based on pedestrian signal
+            if pedestrian_active:
+                if direction in ['N', 'S']:  # North-South direction
+                    if vehicle.x > 400 and vehicle.x < 600 and (vehicle.y > 260 and vehicle.y < 320):  # Between the zebra crossing area
+                        continue  # Stop the vehicle if it's in the zebra crossing zone
+                elif direction in ['E', 'W']:  # East-West direction
+                    if vehicle.x > 480 and vehicle.x < 520 and (vehicle.y > 0 and vehicle.y < 300):  # Vertical crossing
+                        continue  # Stop the vehicle if it's in the zebra crossing zone
+
+            # Check traffic light state for the direction
+            if direction in ['N', 'S']:
+                light_state = any(light.state == "GREEN" for light in north_south_lights)
+            else:  # direction in ['E', 'W']
+                light_state = any(light.state == "GREEN" for light in east_west_lights)
+
+            if light_state or vehicle.type == "ambulance":
+                vehicle.move()
+
+            if vehicle.is_out_of_bounds():
+                queue.popleft()
+
+•	This section handles the movement of vehicles based on traffic light signals. If the pedestrian crossing is active, vehicles in the zebra crossing area are stopped.
+python
+CopyEdit
+# Font for displaying the countdown
+font = pygame.font.Font(None, 36)
+
+# Draw countdown near traffic lights
+def draw_countdown(x, y, time_left):
+    countdown_text = font.render(str(time_left), True, WHITE)
+    screen.blit(countdown_text, (x, y))
+
+•	The countdown timer is displayed near the traffic lights to show the remaining time for each phase.
+python
+CopyEdit
+# Main simulation loop
+def main():
+    global pedestrian_timer, pedestrian_active
+    running = True
+    phase_duration = 600  # Frames (10 seconds for each phase)
+    timer = phase_duration
+    current_phase = "NS"  # Initial phase: North-South
+    add_vehicle("ambulance", "N")
+
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_c:  # Add car
+                    add_vehicle("car", random.choice(['N', 'S', 'E', 'W']))
+                elif event.key == pygame.K_a:  # Add ambulance
+                    add_vehicle("ambulance", random.choice(['N', 'S', 'E', 'W']))
+
+        # Handle traffic light phases and pedestrian crossing
+        move_vehicles()
+        draw_roads()
+
+        # Draw the vehicles and traffic lights
+        for light in north_south_lights + east_west_lights:
+            light.draw()
+        for queue in vehicle_queues.values():
+            for vehicle in queue:
+                vehicle.draw()
+
+        pygame.display.flip()
+        clock.tick(60)
+
+    pygame.quit()
+
+if __name__ == "__main__":
+    main()
+
